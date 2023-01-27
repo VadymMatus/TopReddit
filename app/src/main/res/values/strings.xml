@@ -11,4 +11,7 @@
     <string name="comments">Comments:</string>
     <string name="comment_count_template">999</string>
     <string name="post_title_template">Some text for title…</string>
+    <string name="save_image">Download and save image?</string>
+    <string name="save_image_ok">Save</string>
+    <string name="save_image_cancel">Cancel</string>
 </resources>

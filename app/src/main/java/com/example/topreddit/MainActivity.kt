@@ -1,6 +1,13 @@
 package com.example.topreddit
 
+import android.content.ContentValues
+import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
@@ -11,17 +18,25 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.paging.LoadState
 import androidx.paging.PagingData
-import androidx.paging.PagingDataAdapter
 import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.DividerItemDecoration
+import coil.Coil
+import coil.ImageLoader
+import coil.request.ImageRequest
 import com.example.topreddit.databinding.ActivityMainBinding
 import com.example.topreddit.redditApi.Post
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-
+import java.io.File
+import java.io.FileOutputStream
+import java.io.OutputStream
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
+
+    //ImageLoader instance
+    private lateinit var imageLoader: ImageLoader
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,10 +52,14 @@ class MainActivity : AppCompatActivity() {
         )
             .get(MainViewModel::class.java)
 
+
+        //getting imageloader instance
+        imageLoader = Coil.imageLoader(this)
+
         val decoration = DividerItemDecoration(this, DividerItemDecoration.VERTICAL)
         binding.recycleViewPostList.addItemDecoration(decoration)
 
-        val postAdapter = PostAdapter()
+        val postAdapter = PostAdapter(::saveImageByUrl)
         val header = PostsLoadStateAdapter { postAdapter.retry() }
         binding.recycleViewPostList.adapter = postAdapter.withLoadStateHeaderAndFooter(
             header = header,
@@ -52,6 +71,50 @@ class MainActivity : AppCompatActivity() {
             postAdapter = postAdapter,
             pagingData = viewModel.pagingDataFlow
         )
+
+    }
+
+    private fun saveImageByUrl(url: String?): Unit {
+        getBitmapFromUrl(url!!)
+    }
+
+    private fun getBitmapFromUrl(bitmapURL: String) = lifecycleScope.launch {
+        val request = ImageRequest.Builder(this@MainActivity)
+            .data(bitmapURL)
+            .build()
+        try {
+            val downloadedBitmap = (imageLoader.execute(request).drawable as BitmapDrawable).bitmap
+            saveMediaToStorage(downloadedBitmap)
+        } catch (e: Exception) {
+            Log.e(TAG, e.message.toString())
+            Toast.makeText(this@MainActivity, "Image save error", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun saveMediaToStorage(bitmap: Bitmap) {
+        val filename = "${System.currentTimeMillis()}.jpg"
+        var fos: OutputStream? = null
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            contentResolver?.also { resolver ->
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "image/jpg")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+                }
+                val imageUri: Uri? =
+                    resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+                fos = imageUri?.let { resolver.openOutputStream(it) }
+            }
+        } else {
+            val imagesDir =
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+            val image = File(imagesDir, filename)
+            fos = FileOutputStream(image)
+        }
+        fos?.use {
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, it)
+            Toast.makeText(this, "Saved to Photos", Toast.LENGTH_SHORT).show()
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {

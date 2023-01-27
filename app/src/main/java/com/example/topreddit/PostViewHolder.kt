@@ -16,6 +16,8 @@
 
 package com.example.topreddit
 
+import android.app.AlertDialog
+import android.content.DialogInterface
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
@@ -27,13 +29,15 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.bumptech.glide.Glide.init
 import com.example.topreddit.redditApi.Post
 
 
 /**
  * View Holder for a [Post] RecyclerView list item.
  */
-class PostViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+class PostViewHolder(view: View, saveImageByUrl: (String?) -> Unit) :
+    RecyclerView.ViewHolder(view) {
     private val imageViewThumbnail: ImageView = view.findViewById(R.id.imageViewThumbnail)
     private val textViewAuthor: TextView = view.findViewById(R.id.textViewAuthor)
     private val textViewTimeAgo: TextView = view.findViewById(R.id.textViewTimeAgo)
@@ -43,6 +47,25 @@ class PostViewHolder(view: View) : RecyclerView.ViewHolder(view) {
     private var post: Post? = null
 
     init {
+        imageViewThumbnail.setOnClickListener {
+            val builder = AlertDialog.Builder(view.context)
+            builder.setMessage(R.string.save_image)
+                .setPositiveButton(
+                    R.string.save_image_ok
+                ) { dialog, id ->
+                    Log.d(TAG, "Save image ${post?.thumbnail}")
+                    dialog.cancel()
+                    saveImageByUrl(post?.thumbnail)
+                }
+                .setNegativeButton(
+                    R.string.save_image_cancel
+                ) { dialog, id ->
+                }
+            builder
+                .create()
+                .show()
+
+        }
         view.setOnClickListener {
             Log.d(TAG, "Post[" + post?.id.toString() + "] clicked")
             post?.url?.let { url ->
@@ -76,12 +99,12 @@ class PostViewHolder(view: View) : RecyclerView.ViewHolder(view) {
     }
 
     companion object {
-        fun create(parent: ViewGroup): PostViewHolder {
+        fun create(parent: ViewGroup, saveImageByUrl: (String?) -> Unit): PostViewHolder {
             val view = LayoutInflater.from(parent.context)
                 .inflate(R.layout.post_view_item, parent, false)
-            return PostViewHolder(view)
+            return PostViewHolder(view, saveImageByUrl)
         }
 
-        private const val TAG = "PostAdapter"
+        private const val TAG = "PostViewHolder"
     }
 }

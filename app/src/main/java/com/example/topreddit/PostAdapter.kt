@@ -26,10 +26,10 @@ import com.example.topreddit.redditApi.Post
 /**
  * Adapter for the list of posts.
  */
-class PostAdapter : PagingDataAdapter<Post, ViewHolder>(UIMODEL_COMPARATOR) {
+class PostAdapter(val saveImageByUrl: (String?) -> Unit) : PagingDataAdapter<Post, ViewHolder>(UIMODEL_COMPARATOR) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
-        PostViewHolder.create(parent)
+        PostViewHolder.create(parent, saveImageByUrl)
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val post = getItem(position)
